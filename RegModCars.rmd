@@ -1,0 +1,100 @@
+---
+title: "RegressionModels_CourseProject"
+author: "Sai Preteek Medi"
+date: "Saturday, June 20, 2015"
+output: pdf_document
+---
+# Regression Models Course Project: 
+
+## MPG Differential based on Transmission Type.
+
+### This Analysis satisfies the Course Project requirements for the Regression Models Course offered by Johns Hopkins University and Coursera. The principal focus of the research is to investigate trends in vehicle miles per gallon as a function of transmission type. This research will quantify the relationship between transmission type and MPG.Our best model including Number of Cylinders, VS, and Transmission type has estimated an MPG differential of 3.164892 between cars with Automatic (22.809 MPG) and Manual (25.974 MPG) Transmissions.
+
+## Data Processing:
+### This section is to load and transform the Motor Trend's Car Data. We also perform variable conversion as factors for proper analysis.
+```{r, echo=T} 
+data(mtcars)
+str(mtcars) #producing factor variables allow plots to show the levels for certain variables.
+mtcars$vs<-factor(mtcars$vs)
+mtcars$cyl<-factor(mtcars$cyl)
+mtcars$am<-factor(mtcars$am)
+mtcars$carb<-factor(mtcars$carb)
+mtcars$gear<-factor(mtcars$gear)
+```
+
+## EDA:
+### Exploratory Data Analysis is the process of investigating the relationships between the variables in our data. We will use plotting and linear models to explore trends.
+```{r,echo=TRUE}
+pairs(mtcars)   #This plot allows preliminary Exploratory Data Analysis.
+```
+### It seems apparent from the top row of the pairs plot that the variables "cyl", "disp", "hp", "wt", "vs", "am", "carb", and "gear" strongly correlate with mpg. 
+
+```{r, echo=TRUE}
+library(ggplot2);library(gridExtra)
+par(mfrow=c(2,2))
+cyl<-qplot(cyl, mpg, data=mtcars,colour=cyl,fill=cyl, geom=c("boxplot","jitter"), main="Number of Cylinders")
+vs<-qplot(vs, mpg, data=mtcars,colour=vs,fill=vs, geom=c("boxplot","jitter"), main="Type of VS")
+gear<-qplot(gear, mpg, data=mtcars,colour=gear,fill=gear, geom=c("boxplot","jitter"), main="Number of Gears")
+am<-qplot(am, mpg, data=mtcars,colour=am,fill=am, geom=c("boxplot","jitter"),main="Transmission Type")
+grid.arrange(cyl,vs,gear,am,ncol=2,nrow=2)
+
+```
+
+## Analysis: 
+### Using the findings of the previous section's EDA, we will perform Simple Linear Regression - lm(mpg~am,data=mtcars)
+```{r,echo=TRUE}
+fitBasic<-lm(mpg~am,data=mtcars)
+coef(summary(fitBasic))#using only transmission type 
+```
+#### Our beta0 coefficient for the simple model is ~17.147 which is the mean MPG for cars with automatic transmission. The beta1 coefficient is the mean increase in MPG for cars with manual transmission. Summing beta0+beta1 will give the mean MPG for cars with manual transmission. 
+
+#### We can also calculate the 95% confidence interval for the mean MPG difference:
+
+```{r,echo=T}
+pe <- coef(summary(fitBasic))[2, 1]
+se <- coef(summary(fitBasic))[2, 2]
+tstat <- qt(1 - 0.05/2, length(mtcars$mpg) - 2) 
+pe + c(-1, 1) * (se * tstat)
+```
+#### The P value being 2.85e-4 is small enough for the estimation to remain significant. The Confidence Intervals do not include zero, using these two parameters, we can reject the null hypothesis and accept the significant difference in MPG between these two groups.
+
+
+### We can now explore other Linear Models by including additional regressors:
+```{r,echo=T}
+fitAll<-lm(mpg~.,data=mtcars)
+fit2<-lm(mpg~am+cyl,data=mtcars)
+fit3<-lm(mpg~am+cyl+vs,data=mtcars)
+coef(summary(fitAll)) #using all variables as regressors
+pe <- coef(summary(fitAll))[10, 1]
+se <- coef(summary(fitAll))[10, 2]
+tstat <- qt(1 - 0.05/2, length(mtcars$mpg) - 2) 
+pe + c(-1, 1) * (se * tstat) 
+```
+#### The Confidence Interval for fitAlll includes 0 and the P value is large 0.711.
+```{r}
+coef(summary(fit2))  # using regressors: am,cyl
+pe <- coef(summary(fit2))[2, 1]
+se <- coef(summary(fit2))[2, 2]
+tstat <- qt(1 - 0.05/2, length(mtcars$mpg) - 2) 
+pe + c(-1, 1) * (se * tstat)
+
+```
+#### The Confidence interval for fit2 barely includes 0 and the p value is greater than 0.05 at 0.05845
+```{r}
+coef(summary(fit3))  # using regressors: am,cyl,vs
+pe <- coef(summary(fit3))[2, 1]
+se <- coef(summary(fit3))[2, 2]
+tstat <- qt(1 - 0.05/2, length(mtcars$mpg) - 2) 
+pe + c(-1, 1) * (se * tstat)
+```
+#### The Linear Model including am, vs, and cyl has a barely acceptable p value at 0.048 and the confidence intervals barely avoid 0. We can accept this model as the best fitting model to estimate MPG differentials between cars with Automatic (22.809 MPG) and Manual (25.974 MPG) Transmissions.
+
+
+### Residuals plots:
+```{r}
+residFinal<-qplot(fit3$fitted,fit3$residuals, data=fit3)+geom_line(method="lm")
+residBasic<-qplot(fitBasic$fitted,fitBasic$residuals,data=fitBasic)+geom_smooth(method="lm")
+grid.arrange(residBasic,residFinal, ncol=2)
+```
+### The Residuals plot of the basic model is much more clean than the model including cyl, am and vs as regressors. There seem to be significant outliers at the min and max values of the fitted models.
+
